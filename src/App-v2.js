@@ -3,32 +3,61 @@ import { useEffect, useState } from "react";
 const key = "c74dc12b";
 
 export default function App() {
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
-  const query = "batman";
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(function () {
-    async function fetchMovies() {
-      const res = await fetch(
-        `http://www.omdbapi.com/?apikey=${key}&s=${query}`
-      );
-      const data = await res.json();
-      setMovies(data.Search);
-    }
-    fetchMovies();
-  }, []);
+  // const tempQuery = "batman";
+
+  useEffect(
+    function () {
+      async function fetchMovies() {
+        try {
+          setIsLoading(true);
+          setError("");
+          const res = await fetch(
+            `http://www.omdbapi.com/?apikey=${key}&s=${query}`
+          );
+
+          if (!res.ok) throw new Error("Something went wrong fetching movies");
+
+          const data = await res.json();
+
+          if (data.Response === "false") throw new Error("Movie not found");
+
+          setMovies(data.Search);
+        } catch (err) {
+          console.error(err.message);
+          setError(err.message);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      fetchMovies();
+    },
+    [query]
+  );
 
   return (
     <>
       <Nav>
         <Logo />
-        <Search />
+        <Search query={query} setQuery={setQuery} />
         <NumResults movies={movies} />
       </Nav>
 
       <Main>
         <Box>
-          <MoviesList movies={movies} />
+          {/* {isLoading ? (
+            <p className="loader">Laoding...</p>
+          ) : (
+            <MoviesList movies={movies} />
+          )} */}
+          {isLoading && <p>Loading...</p>}
+          {!isLoading && !error && <MoviesList movies={movies} />}
+          {error && <ErrorMessage message={error} />}
         </Box>
 
         <Box>
@@ -41,6 +70,10 @@ export default function App() {
     </>
   );
 }
+
+const ErrorMessage = function ({ message }) {
+  return <p className="error">{message}</p>;
+};
 
 function Nav({ children }) {
   return <nav className="nav-bar">{children}</nav>;
@@ -55,8 +88,7 @@ function Logo() {
   );
 }
 
-function Search() {
-  const [query, setQuery] = useState("");
+function Search({ query, setQuery }) {
   return (
     <input
       className="search"
@@ -71,7 +103,7 @@ function Search() {
 function NumResults({ movies }) {
   return (
     <p className="num-results">
-      Found <strong>{movies.length}</strong> results
+      Found <strong>{movies ? movies.length : 0}</strong> results
     </p>
   );
 }
